@@ -1,0 +1,23 @@
+# Generated geometry exports
+output/
+
+# FreeCAD AppImage and extraction
+*.AppImage
+squashfs-root/
+.FreeCAD/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# VS Code
+.vscode/
+
+# Environment
+.env
