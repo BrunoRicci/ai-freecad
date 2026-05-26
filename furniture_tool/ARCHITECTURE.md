@@ -244,11 +244,11 @@ Contains lists of:
 | `config.py` | ✅ Done |
 | `solver.py` | ✅ Done — 19/19 tests passing |
 | `test_solver.py` | ✅ Done |
-| `panel.py` | 🔲 Next |
-| `joinery.py` | 🔲 Pending |
-| `hardware.py` | 🔲 Pending |
-| `cabinet.py` | 🔲 Pending |
-| `export.py` | 🔲 Pending |
-| `main.py` | 🔲 Pending |
+| `panel.py` | ✅ Done — ResolvedPanel → Part::Feature, colours by role |
+| `joinery.py` | ✅ Done — confirmat bores + hinge cup cuts |
+| `hardware.py` | ✅ Done — slide placements, handle hole positions |
+| `cabinet.py` | ✅ Done — full assembly, groups, carcass + hinge joinery |
+| `export.py` | ✅ Done — DXF R14 per panel, SVG cut sheet, BOM CSV |
+| `main.py` | ✅ Done — solve → build → export entry point |
 | Input parser (image/text) | 🔲 Future release |
 | Panel nesting (CNC sheet optimizer) | 🔲 Future release |
