@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FreeCAD Viewer</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #16161c; color: #bbb; font: 12px/1 "SF Mono","Fira Mono",monospace; overflow: hidden; }
+  canvas { display: block; }
+
+  #bar {
+    position: fixed; bottom: 0; left: 0; right: 0; height: 28px;
+    background: rgba(0,0,0,.6); border-top: 1px solid #2a2a35;
+    display: flex; align-items: center; gap: 14px; padding: 0 14px;
+  }
+  #dot { width: 7px; height: 7px; border-radius: 50%; background: #3b3; flex-shrink: 0; }
+  #dot.flash { background: #8f8; box-shadow: 0 0 6px #8f8; }
+  #status { color: #7b7; }
+  #info   { color: #999; flex: 1; }
+
+  #overlay {
+    display: none;
+    position: fixed; inset: 0; bottom: 28px;
+    background: #16161c;
+    align-items: center; justify-content: center;
+    flex-direction: column; gap: 14px;
+    color: #555; font-size: 13px;
+  }
+  #overlay.visible { display: flex; }
+  #overlay .msg { color: #888; }
+  #overlay .hint { color: #444; font-size: 11px; }
+
+  #err {
+    display: none;
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    background: #1f0d0d; border: 1px solid #833; border-radius: 5px;
+    padding: 18px 24px; color: #f88; font-size: 12px;
+    max-width: 560px; white-space: pre-wrap; line-height: 1.6; z-index: 10;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="bar">
+  <div id="dot"></div>
+  <span id="status">connecting…</span>
+  <span id="info"></span>
+</div>
+
+<div id="overlay" class="visible">
+  <div class="msg">Waiting for <code>output/bracket.stl</code></div>
+  <div class="hint">Run: python scripts/export_example.py</div>
+</div>
+
+<div id="err"></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { STLLoader }      from 'three/addons/loaders/STLLoader.js';
+
+// ── renderer ──────────────────────────────────────────────────────────────────
+const canvas   = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(devicePixelRatio);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
+
+// ── scene ─────────────────────────────────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x16161c);
+scene.fog        = new THREE.FogExp2(0x16161c, 0.0002);
+
+// ── camera & controls ─────────────────────────────────────────────────────────
+const camera = new THREE.PerspectiveCamera(42, 1, 0.01, 50000);
+camera.position.set(40, 30, 60);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+
+// ── lights ────────────────────────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+
+const sun = new THREE.DirectionalLight(0xfff8e8, 1.1);
+sun.position.set(60, 120, 80);
+sun.castShadow           = true;
+sun.shadow.mapSize.width = sun.shadow.mapSize.height = 2048;
+scene.add(sun);
+
+const fill = new THREE.DirectionalLight(0xd0e8ff, 0.3);
+fill.position.set(-50, 20, -40);
+scene.add(fill);
+
+// ── grid ──────────────────────────────────────────────────────────────────────
+const grid = new THREE.GridHelper(1000, 50, 0x2a2a38, 0x222230);
+scene.add(grid);
+
+// ── material ──────────────────────────────────────────────────────────────────
+const mat = new THREE.MeshPhongMaterial({
+  color:     0x9ab0c8,
+  shininess: 45,
+  specular:  0x445566,
+});
+
+// ── state ─────────────────────────────────────────────────────────────────────
+let mesh      = null;
+let lastMtime = 0;
+const loader  = new STLLoader();
+
+const dot     = document.getElementById('dot');
+const status  = document.getElementById('status');
+const info    = document.getElementById('info');
+const overlay = document.getElementById('overlay');
+const err     = document.getElementById('err');
+
+function flash() {
+  dot.classList.remove('flash');
+  void dot.offsetWidth;
+  dot.classList.add('flash');
+  setTimeout(() => dot.classList.remove('flash'), 400);
+}
+
+function loadSTL() {
+  // Cache-bust so the browser doesn't serve a stale copy
+  loader.load(
+    `/output/bracket.stl?t=${Date.now()}`,
+    (geometry) => {
+      err.style.display = 'none';
+
+      // Remove previous mesh
+      if (mesh) { scene.remove(mesh); mesh.geometry.dispose(); }
+
+      geometry.computeVertexNormals();
+
+      // Centre geometry at origin
+      geometry.computeBoundingBox();
+      const box    = geometry.boundingBox;
+      const centre = new THREE.Vector3();
+      box.getCenter(centre);
+      geometry.translate(-centre.x, -centre.y, -centre.z);
+
+      mesh = new THREE.Mesh(geometry, mat);
+      mesh.castShadow = mesh.receiveShadow = true;
+      scene.add(mesh);
+
+      // Fit grid and camera
+      const size   = new THREE.Vector3();
+      box.getSize(size);
+      const maxDim = Math.max(size.x, size.y, size.z);
+
+      grid.position.y = -size.y / 2;
+      grid.scale.setScalar(Math.max(1, maxDim / 20));
+
+      camera.position.set(maxDim * 1.2, maxDim * 0.9, maxDim * 1.8);
+      camera.near = maxDim * 0.001;
+      camera.far  = maxDim * 100;
+      camera.updateProjectionMatrix();
+      controls.target.set(0, 0, 0);
+      controls.update();
+
+      // Status
+      const verts = (geometry.attributes.position.count / 3).toLocaleString();
+      info.textContent = `${size.x.toFixed(1)} × ${size.y.toFixed(1)} × ${size.z.toFixed(1)} mm · ${verts} triangles`;
+      status.textContent = 'live';
+      overlay.classList.remove('visible');
+      flash();
+    },
+    null,
+    () => {
+      // File not found or server error — keep waiting
+      status.textContent = 'waiting…';
+      overlay.classList.add('visible');
+    }
+  );
+}
+
+// ── polling ───────────────────────────────────────────────────────────────────
+async function poll() {
+  try {
+    const res   = await fetch('/api/mtime');
+    const files = await res.json();
+    const mtime = files['bracket.stl'] ?? 0;
+
+    if (mtime && mtime !== lastMtime) {
+      lastMtime = mtime;
+      loadSTL();
+    } else if (!mtime) {
+      status.textContent = 'waiting…';
+      overlay.classList.add('visible');
+    }
+  } catch {
+    status.textContent = 'server offline';
+  }
+}
+
+poll();
+setInterval(poll, 2000);
+
+// ── resize ────────────────────────────────────────────────────────────────────
+function resize() {
+  const w = innerWidth, h = innerHeight - 28;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ── render loop ───────────────────────────────────────────────────────────────
+(function loop() {
+  requestAnimationFrame(loop);
+  controls.update();
+  renderer.render(scene, camera);
+}());
+</script>
+</body>
+</html>

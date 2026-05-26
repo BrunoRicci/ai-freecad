@@ -9,7 +9,6 @@ Usage:
 Exports output/bracket.step and output/bracket.stl.
 """
 
-import argparse
 import os
 import sys
 
@@ -18,6 +17,8 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import FreeCAD as App
 import Part
 import Mesh
+
+import argparse
 
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "output")
 
