@@ -66,14 +66,16 @@ MIME = {
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        if self.path in ("/", "/index.html"):
+        path = self.path.split("?")[0]  # strip query string for all routing
+
+        if path in ("/", "/index.html"):
             self._serve(VIEWER_DIR / "index.html", "text/html; charset=utf-8")
 
-        elif self.path == "/geometry.json":
+        elif path == "/geometry.json":
             body = geometry_json()
             self._respond(200, "application/json", body)
 
-        elif self.path == "/api/mtime":
+        elif path == "/api/mtime":
             # Returns mtime of every file in output/ so the viewer can detect changes
             files = {}
             if OUTPUT_DIR.exists():
@@ -83,8 +85,8 @@ class Handler(BaseHTTPRequestHandler):
             body = json.dumps(files).encode()
             self._respond(200, "application/json", body)
 
-        elif self.path.startswith("/output/"):
-            name = self.path[8:]                         # strip /output/
+        elif path.startswith("/output/"):
+            name = path[8:]                              # strip /output/
             if not name or "/" in name or name.startswith("."):
                 self._respond(403, "text/plain", b"forbidden")
             else:
