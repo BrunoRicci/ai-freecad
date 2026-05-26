@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-Lightweight dev server for the furniture 3D viewer.
+Lightweight dev server for the FreeCAD viewer.
 
   python viewer/server.py          # port 8080
   python viewer/server.py 3000     # custom port
 
 Open http://localhost:<port> in your browser.
-Edit viewer/spec.py or furniture_tool/config.py — viewer auto-updates in ~2 s.
+- output/bracket.stl is served at /output/bracket.stl and auto-reloads in the viewer
+- Edit viewer/spec.py or furniture_tool/config.py for the furniture view (/geometry.json)
 """
 import json
 import os
@@ -17,6 +18,7 @@ from pathlib import Path
 
 ROOT       = Path(__file__).resolve().parent.parent
 VIEWER_DIR = Path(__file__).resolve().parent
+OUTPUT_DIR = ROOT / "output"
 EXPORTER   = ROOT / "furniture_tool" / "geometry_exporter.py"
 
 WATCH = [
@@ -54,13 +56,42 @@ def geometry_json() -> bytes:
     return _cache["body"]
 
 
+MIME = {
+    ".stl":  "application/octet-stream",
+    ".step": "application/octet-stream",
+    ".html": "text/html; charset=utf-8",
+    ".json": "application/json",
+}
+
+
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path in ("/", "/index.html"):
             self._serve(VIEWER_DIR / "index.html", "text/html; charset=utf-8")
+
         elif self.path == "/geometry.json":
             body = geometry_json()
             self._respond(200, "application/json", body)
+
+        elif self.path == "/api/mtime":
+            # Returns mtime of every file in output/ so the viewer can detect changes
+            files = {}
+            if OUTPUT_DIR.exists():
+                for f in OUTPUT_DIR.iterdir():
+                    if f.is_file():
+                        files[f.name] = f.stat().st_mtime
+            body = json.dumps(files).encode()
+            self._respond(200, "application/json", body)
+
+        elif self.path.startswith("/output/"):
+            name = self.path[8:]                         # strip /output/
+            if not name or "/" in name or name.startswith("."):
+                self._respond(403, "text/plain", b"forbidden")
+            else:
+                ext   = Path(name).suffix.lower()
+                ctype = MIME.get(ext, "application/octet-stream")
+                self._serve(OUTPUT_DIR / name, ctype)
+
         else:
             self._respond(404, "text/plain", b"not found")
 
@@ -85,7 +116,7 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8080
-    print(f"Furniture viewer → http://localhost:{port}")
-    print("Edit viewer/spec.py or furniture_tool/config.py to update the model.")
+    print(f"Viewer → http://localhost:{port}")
+    print("Re-run scripts/export_example.py to update bracket.stl — viewer auto-reloads.")
     print("Ctrl-C to stop.\n")
     HTTPServer(("0.0.0.0", port), Handler).serve_forever()
