@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Furniture Viewer</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #16161c;
+    color: #bbb;
+    font: 12px/1 "SF Mono", "Fira Mono", monospace;
+    overflow: hidden;
+  }
+
+  canvas { display: block; }
+
+  /* ── bottom status bar ───────────────────────────────────── */
+  #bar {
+    position: fixed; bottom: 0; left: 0; right: 0; height: 28px;
+    background: rgba(0,0,0,.55);
+    border-top: 1px solid #2a2a35;
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 14px;
+  }
+
+  #dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #3b3; flex-shrink: 0;
+    transition: background .1s;
+  }
+  #dot.flash { background: #8f8; box-shadow: 0 0 6px #8f8; }
+
+  #status { color: #7b7; }
+  #lbl    { color: #aaa; }
+  #warn   { color: #c84; flex: 1; overflow: hidden;
+            white-space: nowrap; text-overflow: ellipsis; }
+
+  /* ── top-left legend ─────────────────────────────────────── */
+  #legend {
+    position: fixed; top: 12px; left: 14px;
+    background: rgba(0,0,0,.45);
+    border: 1px solid #2a2a35;
+    border-radius: 4px;
+    padding: 8px 12px;
+    line-height: 1.9;
+    font-size: 11px;
+    color: #888;
+  }
+  #legend span {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border-radius: 2px;
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+
+  /* ── error overlay ───────────────────────────────────────── */
+  #err {
+    display: none;
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    background: #1f0d0d;
+    border: 1px solid #833;
+    border-radius: 5px;
+    padding: 18px 24px;
+    color: #f88;
+    font-size: 12px;
+    max-width: 560px;
+    white-space: pre-wrap;
+    line-height: 1.6;
+    z-index: 10;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="bar">
+  <div id="dot"></div>
+  <span id="status">connecting…</span>
+  <span id="lbl"></span>
+  <span id="warn"></span>
+</div>
+
+<div id="legend">
+  <div><span style="background:#d1b48c"></span>carcass</div>
+  <div><span style="background:#c8a880"></span>divider / shelf</div>
+  <div><span style="background:#bd9e6a"></span>door</div>
+  <div><span style="background:#c4a272"></span>drawer</div>
+  <div><span style="background:#e0cca6"></span>back (HDF)</div>
+</div>
+
+<div id="err"></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── renderer ──────────────────────────────────────────────────────────────────
+const canvas   = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(devicePixelRatio);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
+
+// ── scene ─────────────────────────────────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x16161c);
+scene.fog        = new THREE.FogExp2(0x16161c, 0.00035);
+
+// ── camera ────────────────────────────────────────────────────────────────────
+const camera = new THREE.PerspectiveCamera(42, 1, 1, 12000);
+camera.position.set(900, 550, 1400);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping  = true;
+controls.dampingFactor  = 0.07;
+controls.target.set(0, 50, 0);
+
+// ── lights ────────────────────────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+const sun = new THREE.DirectionalLight(0xfff8e8, 1.1);
+sun.position.set(700, 1400, 900);
+sun.castShadow           = true;
+sun.shadow.mapSize.width = sun.shadow.mapSize.height = 2048;
+sun.shadow.camera.near   = 10;
+sun.shadow.camera.far    = 6000;
+sun.shadow.camera.left   = sun.shadow.camera.bottom = -1500;
+sun.shadow.camera.right  = sun.shadow.camera.top    =  1500;
+scene.add(sun);
+
+const fill = new THREE.DirectionalLight(0xd0e8ff, 0.28);
+fill.position.set(-600, 300, -500);
+scene.add(fill);
+
+// ── grid ──────────────────────────────────────────────────────────────────────
+const grid = new THREE.GridHelper(4000, 40, 0x2a2a38, 0x222230);
+scene.add(grid);
+
+// ── panel colours ─────────────────────────────────────────────────────────────
+const ROLE_COLOR = {
+  side_left:     0xd1b48c,
+  side_right:    0xd1b48c,
+  top:           0xcfaf88,
+  bottom:        0xcfaf88,
+  divider:       0xc8a880,
+  shelf:         0xc0a078,
+  back:          0xe0cca6,
+  door:          0xbd9e6a,
+  drawer_front:  0xc4a272,
+  drawer_side:   0xbe9b6c,
+  drawer_back:   0xbe9b6c,
+  drawer_bottom: 0xd8c89a,
+};
+const EDGE_COLOR = 0x2e1e0c;
+
+// ── geometry helpers ─────────────────────────────────────────────────────────
+let group = new THREE.Group();
+scene.add(group);
+
+function buildScene(data) {
+  scene.remove(group);
+  group = new THREE.Group();
+
+  const ow = data.outer?.width  ?? 0;
+  const oh = data.outer?.height ?? 0;
+  const od = data.outer?.depth  ?? 0;
+
+  // Cabinet centred at origin; front faces +Z toward camera
+  const cx = ow / 2;
+  const cy = oh / 2;
+  const cz = od / 2;
+
+  for (const p of data.panels) {
+    const geo = new THREE.BoxGeometry(p.width, p.height, p.depth);
+    const mat = new THREE.MeshPhongMaterial({
+      color:     ROLE_COLOR[p.role] ?? 0xccbb99,
+      shininess: 22,
+      specular:  0x221810,
+    });
+
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.castShadow    = true;
+    mesh.receiveShadow = true;
+
+    // FreeCAD axes: X = width, Y = depth (into cabinet), Z = height
+    // Three.js axes: X = width, Y = height (up),         Z = depth (toward viewer)
+    // Conversion:
+    //   three.x = freecad.x  (same)
+    //   three.y = freecad.z  (height)
+    //   three.z = -freecad.y (depth flipped so front faces +Z)
+    mesh.position.set(
+      p.pos_x + p.width  / 2 - cx,
+      p.pos_z + p.height / 2 - cy,
+      cz - p.pos_y - p.depth / 2,
+    );
+
+    // Crisp edge outlines
+    mesh.add(new THREE.LineSegments(
+      new THREE.EdgesGeometry(geo, 5),
+      new THREE.LineBasicMaterial({ color: EDGE_COLOR }),
+    ));
+
+    group.add(mesh);
+  }
+
+  // Floor grid aligns with cabinet bottom
+  grid.position.y = -cy;
+  scene.add(group);
+}
+
+// ── polling ───────────────────────────────────────────────────────────────────
+const dot    = document.getElementById('dot');
+const status = document.getElementById('status');
+const lbl    = document.getElementById('lbl');
+const warn   = document.getElementById('warn');
+const err    = document.getElementById('err');
+
+let lastJson = '';
+
+function flash() {
+  dot.classList.remove('flash');
+  void dot.offsetWidth;           // force reflow to retrigger animation
+  dot.classList.add('flash');
+  setTimeout(() => dot.classList.remove('flash'), 400);
+}
+
+async function poll() {
+  try {
+    const res  = await fetch('/geometry.json');
+    const text = await res.text();
+
+    if (text === lastJson) return;   // nothing changed
+    lastJson = text;
+    flash();
+
+    const data = JSON.parse(text);
+
+    if (!data.ok) {
+      err.textContent  = 'Solver error:\n\n' + data.error;
+      err.style.display = 'block';
+      status.textContent = 'error';
+      return;
+    }
+
+    err.style.display = 'none';
+    buildScene(data);
+
+    const n = data.panels?.length ?? 0;
+    status.textContent = `live · ${n} panels`;
+    lbl.textContent    = data.label ?? '';
+    warn.textContent   = data.warnings?.length
+      ? '⚠ ' + data.warnings.join('  ⚠ ')
+      : '';
+
+  } catch {
+    status.textContent = 'server offline';
+  }
+}
+
+poll();
+setInterval(poll, 2000);
+
+// ── resize ────────────────────────────────────────────────────────────────────
+function resize() {
+  const w = innerWidth;
+  const h = innerHeight - 28;   // leave room for status bar
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ── render loop ───────────────────────────────────────────────────────────────
+(function loop() {
+  requestAnimationFrame(loop);
+  controls.update();
+  renderer.render(scene, camera);
+}());
+</script>
+</body>
+</html>
