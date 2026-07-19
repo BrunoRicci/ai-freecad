@@ -21,7 +21,9 @@
     }
   },
   "remoteEnv": {
-    "FREECAD_ROOT": "/home/vscode/.FreeCAD/squashfs-root"
+    "FREECAD_ROOT": "/home/vscode/.FreeCAD/squashfs-root",
+    "OLLAMA_MODEL": "qwen2.5:7b",
+    "OLLAMA_HOST": "127.0.0.1:11434"
   },
   "features": {
     "ghcr.io/devcontainers/features/git:1": {}

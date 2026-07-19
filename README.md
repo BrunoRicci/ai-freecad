@@ -116,6 +116,16 @@ result.exportStep("output/my_shape.step")
 
 ---
 
+## Local AI (Ollama + Qwen)
+
+The Codespace also installs [Ollama](https://ollama.com) and pulls a local
+Qwen model automatically (see `.devcontainer/setup.sh`), so future
+AI-driven geometry generation can run against a local model with no
+external API keys. See [`ollama/README.md`](ollama/README.md) for
+configuration and usage.
+
+---
+
 ## Roadmap
 
 - [ ] Three.js in-browser viewer for STL / STEP output

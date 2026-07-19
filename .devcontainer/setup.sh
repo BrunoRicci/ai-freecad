@@ -131,3 +131,7 @@ else
     echo "       Check the above for missing .so files."
     exit 1
 fi
+
+# --- Install Ollama and pull the local Qwen model ---
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+bash "$SCRIPT_DIR/../ollama/install_ollama.sh"
