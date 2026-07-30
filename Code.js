@@ -10,6 +10,12 @@ function sumar(a, b) {
   return a + b;
 }
 
+function doPost(e) {
+  const resultado = runAllTests();
+  return ContentService.createTextOutput(JSON.stringify({tests: resultado}))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
 function cargarDatosAHoja(datos, spreadsheetId = '1kw1MFJ1pgY4gIUV-gmR3oUj-Kfyl7cf9rmk0iGkUO6A', nombreHoja = 'Sheet1') {
   const sheet = SpreadsheetApp.openById(spreadsheetId).getSheetByName(nombreHoja);
 
