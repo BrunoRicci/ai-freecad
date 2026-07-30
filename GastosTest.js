@@ -78,6 +78,49 @@ function testSimplificarDeudasOptimo() {
   return ok;
 }
 
+function testTodosConsumenLoMismo() {
+  const personas = [
+    { nombre: 'A', puso: 150, consumio: 100 },
+    { nombre: 'B', puso: 100, consumio: 100 },
+    { nombre: 'C', puso: 50, consumio: 100 }
+  ];
+  const transacciones = calcularDivisionGastos(personas);
+  const ok = transacciones.length === 1 && transacciones[0].de === 'C' && transacciones[0].para === 'A' && transacciones[0].monto === 50;
+  Logger.log(ok ? '✅ testTodosConsumenLoMismo PASÓ' : '❌ testTodosConsumenLoMismo FALLÓ: ' + JSON.stringify(transacciones));
+  return ok;
+}
+
+function testAlgunosConsumenMas() {
+  const personas = [
+    { nombre: 'A', puso: 200, consumio: 100 },
+    { nombre: 'B', puso: 100, consumio: 150 },
+    { nombre: 'C', puso: 150, consumio: 200 }
+  ];
+  const transacciones = calcularDivisionGastos(personas);
+  const suma = transacciones.reduce((s, t) => s + t.monto, 0);
+  const ok = transacciones.length === 2 && suma === 150;
+  Logger.log(ok ? '✅ testAlgunosConsumenMas PASÓ' : '❌ testAlgunosConsumenMas FALLÓ: ' + JSON.stringify(transacciones));
+  return ok;
+}
+
+function testConsumoEspecificadoTienePrioridad() {
+  // Sin consumoTotal (se toma la suma de puso = 400). C especifica su consumio (50);
+  // A y B no lo especifican: deben repartirse equitativo el RESTANTE (400-50)/2=175 cada uno,
+  // sin modificar el 50 de C.
+  const personas = [
+    { nombre: 'A', puso: 100 },
+    { nombre: 'B', puso: 100 },
+    { nombre: 'C', puso: 200, consumio: 50 }
+  ];
+  const transacciones = calcularDivisionGastos(personas);
+  const suma = transacciones.reduce((s, t) => s + t.monto, 0);
+  const ok = transacciones.length === 2
+    && transacciones.every(t => t.para === 'C' && t.monto === 75)
+    && suma === 150;
+  Logger.log(ok ? '✅ testConsumoEspecificadoTienePrioridad PASÓ' : '❌ testConsumoEspecificadoTienePrioridad FALLÓ: ' + JSON.stringify(transacciones));
+  return ok;
+}
+
 function runGastosTests() {
   Logger.log('🧪 Iniciando tests de Gastos...');
   testCalcularBalances();
@@ -86,5 +129,8 @@ function runGastosTests() {
   testConsumoIndividualPorDefecto();
   testConsumoTotalExplicito();
   testSimplificarDeudasOptimo();
+  testTodosConsumenLoMismo();
+  testAlgunosConsumenMas();
+  testConsumoEspecificadoTienePrioridad();
   Logger.log('✅ Tests de Gastos completados');
 }

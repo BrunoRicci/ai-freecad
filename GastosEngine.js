@@ -88,11 +88,19 @@ function simplificarDeudasOptimo(balances) {
 function calcularDivisionGastos(personas, consumoTotal) {
   // Función de entrada única para RPC/agentes: personas -> transacciones
   // consumoTotal es opcional: si no se pasa, se toma como la suma de "puso" de todos.
-  // El consumo individual es opcional por persona: si falta, se reparte equitativo (consumoTotal / n).
+  // El consumo individual es opcional por persona: si falta, se reparte equitativo
+  // el total restante (descontando lo ya especificado por otras personas) entre
+  // quienes no lo especificaron — el consumo especificado nunca se modifica.
   const total = (consumoTotal !== undefined && consumoTotal !== null)
     ? consumoTotal
     : personas.reduce((suma, p) => suma + p.puso, 0);
-  const consumoEquitativo = redondear(total / personas.length);
+
+  const especificados = personas.filter(p => p.consumio !== undefined && p.consumio !== null);
+  const sinEspecificar = personas.filter(p => p.consumio === undefined || p.consumio === null);
+  const sumaEspecificada = especificados.reduce((suma, p) => suma + p.consumio, 0);
+  const consumoEquitativo = sinEspecificar.length > 0
+    ? redondear((total - sumaEspecificada) / sinEspecificar.length)
+    : 0;
 
   const personasCompletas = personas.map(p => ({
     nombre: p.nombre,
