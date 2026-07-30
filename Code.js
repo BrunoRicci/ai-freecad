@@ -11,9 +11,15 @@ function sumar(a, b) {
 }
 
 function doPost(e) {
-  const resultado = runAllTests();
-  return ContentService.createTextOutput(JSON.stringify({tests: resultado}))
-    .setMimeType(ContentService.MimeType.JSON);
+  try {
+    const body = JSON.parse(e.postData.contents || '{}');
+    const transacciones = calcularDivisionGastos(body.personas);
+    return ContentService.createTextOutput(JSON.stringify({ ok: true, transacciones }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 function cargarDatosAHoja(datos, spreadsheetId = '1kw1MFJ1pgY4gIUV-gmR3oUj-Kfyl7cf9rmk0iGkUO6A', nombreHoja = 'Sheet1') {
