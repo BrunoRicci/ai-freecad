@@ -46,15 +46,35 @@ function testConsumoIndividualPorDefecto() {
 }
 
 function testConsumoTotalExplicito() {
-  // Mismo "puso" que testConsumoIndividualPorDefecto, pero consumoTotal explícito
-  // distinto de la suma de puso (500 en vez de 400) -> debe dar un monto distinto (50, no 100)
+  // Si consumoTotal explícito no coincide con la suma de "puso" (500 vs 400),
+  // el dinero no se conserva (no cierra en 0 entre todos) y no hay forma de
+  // saldar completamente al grupo: el motor devuelve [] en vez de un resultado
+  // parcial engañoso.
   const personas = [
     { nombre: 'A', puso: 100 },
     { nombre: 'B', puso: 300 }
   ];
   const transacciones = calcularDivisionGastos(personas, 500);
-  const ok = transacciones.length === 1 && transacciones[0].monto === 50;
+  const ok = transacciones.length === 0;
   Logger.log(ok ? '✅ testConsumoTotalExplicito PASÓ' : '❌ testConsumoTotalExplicito FALLÓ: ' + JSON.stringify(transacciones));
+  return ok;
+}
+
+function testSimplificarDeudasOptimo() {
+  // Caso donde el algoritmo greedy da 4 transacciones pero el óptimo da 3
+  // (dos subgrupos independientes: {A,B,C} y {D,E}, greedy los mezcla mal)
+  const balances = [
+    { persona: 'A', balance: -5 },
+    { persona: 'B', balance: 3 },
+    { persona: 'C', balance: 2 },
+    { persona: 'D', balance: -4 },
+    { persona: 'E', balance: 4 }
+  ];
+  const greedy = simplificarDeudas(balances);
+  const optimo = simplificarDeudasOptimo(balances);
+  const sumaOptimo = optimo.reduce((s, t) => s + t.monto, 0);
+  const ok = greedy.length === 4 && optimo.length === 3 && sumaOptimo === 11;
+  Logger.log(ok ? '✅ testSimplificarDeudasOptimo PASÓ' : '❌ testSimplificarDeudasOptimo FALLÓ: greedy=' + JSON.stringify(greedy) + ' optimo=' + JSON.stringify(optimo));
   return ok;
 }
 
@@ -65,5 +85,6 @@ function runGastosTests() {
   testCalcularDivisionGastos();
   testConsumoIndividualPorDefecto();
   testConsumoTotalExplicito();
+  testSimplificarDeudasOptimo();
   Logger.log('✅ Tests de Gastos completados');
 }

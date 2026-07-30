@@ -44,6 +44,47 @@ function simplificarDeudas(balances) {
   return transacciones;
 }
 
+function simplificarDeudasOptimo(balances) {
+  // balances: [{ persona, balance }] -> [{ de, para, monto }]
+  // Búsqueda exacta (backtracking) del número mínimo de transacciones.
+  // El greedy (simplificarDeudas) no siempre logra el mínimo real.
+  const cuentas = balances
+    .filter(b => Math.abs(b.balance) >= 0.01)
+    .map(b => ({ persona: b.persona, balance: b.balance }));
+
+  let mejor = null;
+
+  function backtrack(cuentas, transacciones) {
+    if (mejor !== null && transacciones.length >= mejor.length) return;
+
+    const idx = cuentas.findIndex(c => Math.abs(c.balance) >= 0.01);
+    if (idx === -1) {
+      mejor = transacciones;
+      return;
+    }
+
+    const actual = cuentas[idx];
+    for (let k = 0; k < cuentas.length; k++) {
+      if (k === idx) continue;
+      const otro = cuentas[k];
+      if (actual.balance * otro.balance >= 0) continue; // mismo signo, no aplica
+
+      const de = actual.balance < 0 ? actual.persona : otro.persona;
+      const para = actual.balance < 0 ? otro.persona : actual.persona;
+      const monto = redondear(Math.abs(actual.balance));
+
+      const copia = cuentas.map(c => ({ ...c }));
+      copia[idx].balance = 0;
+      copia[k].balance = redondear(otro.balance + actual.balance);
+
+      backtrack(copia, [...transacciones, { de, para, monto }]);
+    }
+  }
+
+  backtrack(cuentas, []);
+  return mejor || [];
+}
+
 function calcularDivisionGastos(personas, consumoTotal) {
   // Función de entrada única para RPC/agentes: personas -> transacciones
   // consumoTotal es opcional: si no se pasa, se toma como la suma de "puso" de todos.
@@ -60,7 +101,7 @@ function calcularDivisionGastos(personas, consumoTotal) {
   }));
 
   const balances = calcularBalances(personasCompletas);
-  return simplificarDeudas(balances);
+  return simplificarDeudasOptimo(balances);
 }
 
 function redondear(n) {
