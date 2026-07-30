@@ -13,6 +13,13 @@ function sumar(a, b) {
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents || '{}');
+
+    if (body.jsonrpc === '2.0') {
+      const respuesta = manejarMcpRequest(body);
+      return ContentService.createTextOutput(JSON.stringify(respuesta))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     const transacciones = calcularDivisionGastos(body.personas);
     return ContentService.createTextOutput(JSON.stringify({ ok: true, transacciones }))
       .setMimeType(ContentService.MimeType.JSON);
