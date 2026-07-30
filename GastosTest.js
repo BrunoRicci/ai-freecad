@@ -33,10 +33,37 @@ function testCalcularDivisionGastos() {
   return ok;
 }
 
+function testConsumoIndividualPorDefecto() {
+  // Sin consumio en ninguna persona: total = suma de puso, repartido equitativo entre 2
+  const personas = [
+    { nombre: 'A', puso: 100 },
+    { nombre: 'B', puso: 300 }
+  ];
+  const transacciones = calcularDivisionGastos(personas);
+  const ok = transacciones.length === 1 && transacciones[0].de === 'A' && transacciones[0].para === 'B' && transacciones[0].monto === 100;
+  Logger.log(ok ? '✅ testConsumoIndividualPorDefecto PASÓ' : '❌ testConsumoIndividualPorDefecto FALLÓ: ' + JSON.stringify(transacciones));
+  return ok;
+}
+
+function testConsumoTotalExplicito() {
+  // Mismo "puso" que testConsumoIndividualPorDefecto, pero consumoTotal explícito
+  // distinto de la suma de puso (500 en vez de 400) -> debe dar un monto distinto (50, no 100)
+  const personas = [
+    { nombre: 'A', puso: 100 },
+    { nombre: 'B', puso: 300 }
+  ];
+  const transacciones = calcularDivisionGastos(personas, 500);
+  const ok = transacciones.length === 1 && transacciones[0].monto === 50;
+  Logger.log(ok ? '✅ testConsumoTotalExplicito PASÓ' : '❌ testConsumoTotalExplicito FALLÓ: ' + JSON.stringify(transacciones));
+  return ok;
+}
+
 function runGastosTests() {
   Logger.log('🧪 Iniciando tests de Gastos...');
   testCalcularBalances();
   testSimplificarDeudas();
   testCalcularDivisionGastos();
+  testConsumoIndividualPorDefecto();
+  testConsumoTotalExplicito();
   Logger.log('✅ Tests de Gastos completados');
 }

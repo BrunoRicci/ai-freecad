@@ -44,9 +44,22 @@ function simplificarDeudas(balances) {
   return transacciones;
 }
 
-function calcularDivisionGastos(personas) {
+function calcularDivisionGastos(personas, consumoTotal) {
   // Función de entrada única para RPC/agentes: personas -> transacciones
-  const balances = calcularBalances(personas);
+  // consumoTotal es opcional: si no se pasa, se toma como la suma de "puso" de todos.
+  // El consumo individual es opcional por persona: si falta, se reparte equitativo (consumoTotal / n).
+  const total = (consumoTotal !== undefined && consumoTotal !== null)
+    ? consumoTotal
+    : personas.reduce((suma, p) => suma + p.puso, 0);
+  const consumoEquitativo = redondear(total / personas.length);
+
+  const personasCompletas = personas.map(p => ({
+    nombre: p.nombre,
+    puso: p.puso,
+    consumio: (p.consumio !== undefined && p.consumio !== null) ? p.consumio : consumoEquitativo
+  }));
+
+  const balances = calcularBalances(personasCompletas);
   return simplificarDeudas(balances);
 }
 
