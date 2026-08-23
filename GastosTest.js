@@ -73,8 +73,34 @@ function testSimplificarDeudasOptimo() {
   const greedy = simplificarDeudas(balances);
   const optimo = simplificarDeudasOptimo(balances);
   const sumaOptimo = optimo.reduce((s, t) => s + t.monto, 0);
-  const ok = greedy.length === 4 && optimo.length === 3 && sumaOptimo === 11;
+  // sumaOptimo = 9 = suma de los saldos positivos (3+2+4): sin sobrepago, cada peso se mueve una sola vez.
+  const ok = greedy.length === 4 && optimo.length === 3 && sumaOptimo === 9;
   Logger.log(ok ? '✅ testSimplificarDeudasOptimo PASÓ' : '❌ testSimplificarDeudasOptimo FALLÓ: greedy=' + JSON.stringify(greedy) + ' optimo=' + JSON.stringify(optimo));
+  return ok;
+}
+
+function testSinSobrepagoParaQuienNoPusoNada() {
+  // Grupo real: si alguien puso $0 y el consumo equitativo es X, esa persona debe
+  // deber exactamente X. La transferencia total que sale de ella tiene que ser
+  // exactamente X, sin recibir nada (eso sería un "pass-through" con sobrepago).
+  const personas = [
+    { nombre: 'Bruno', puso: 65135 },
+    { nombre: 'Flor', puso: 46000 },
+    { nombre: 'Vos', puso: 41000 },
+    { nombre: 'Quimey', puso: 21000 },
+    { nombre: 'Agus', puso: 46206.50 },
+    { nombre: 'Estela', puso: 0 },
+    { nombre: 'Matías', puso: 0 }
+  ];
+  const totalConsumo = personas.reduce((s, p) => s + p.puso, 0);
+  const consumoEquitativo = redondear(totalConsumo / personas.length);
+
+  const transacciones = calcularDivisionGastos(personas);
+  const salidaEstela = transacciones.filter(t => t.de === 'Estela').reduce((s, t) => s + t.monto, 0);
+  const entradaEstela = transacciones.filter(t => t.para === 'Estela').length;
+
+  const ok = salidaEstela === consumoEquitativo && entradaEstela === 0;
+  Logger.log(ok ? '✅ testSinSobrepagoParaQuienNoPusoNada PASÓ' : '❌ testSinSobrepagoParaQuienNoPusoNada FALLÓ: X=' + consumoEquitativo + ' salida=' + salidaEstela + ' entradas=' + entradaEstela + ' ' + JSON.stringify(transacciones));
   return ok;
 }
 
@@ -129,6 +155,7 @@ function runGastosTests() {
   testConsumoIndividualPorDefecto();
   testConsumoTotalExplicito();
   testSimplificarDeudasOptimo();
+  testSinSobrepagoParaQuienNoPusoNada();
   testTodosConsumenLoMismo();
   testAlgunosConsumenMas();
   testConsumoEspecificadoTienePrioridad();

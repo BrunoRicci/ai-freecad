@@ -48,18 +48,27 @@ function simplificarDeudasOptimo(balances) {
   // balances: [{ persona, balance }] -> [{ de, para, monto }]
   // Búsqueda exacta (backtracking) del número mínimo de transacciones.
   // El greedy (simplificarDeudas) no siempre logra el mínimo real.
+  // Entre soluciones con la misma cantidad mínima de transacciones, se
+  // prefiere la de menor monto total movido: eso elimina los "pass-through"
+  // (alguien paga de más para reenviarlo a otro) y deja transacciones
+  // directas, que es la forma más simple de leer el resultado.
   const cuentas = balances
     .filter(b => Math.abs(b.balance) >= 0.01)
     .map(b => ({ persona: b.persona, balance: b.balance }));
 
   let mejor = null;
+  let mejorSuma = Infinity;
 
-  function backtrack(cuentas, transacciones) {
-    if (mejor !== null && transacciones.length >= mejor.length) return;
+  function backtrack(cuentas, transacciones, sumaActual) {
+    if (mejor !== null) {
+      if (transacciones.length > mejor.length) return;
+      if (transacciones.length === mejor.length && sumaActual >= mejorSuma) return;
+    }
 
     const idx = cuentas.findIndex(c => Math.abs(c.balance) >= 0.01);
     if (idx === -1) {
       mejor = transacciones;
+      mejorSuma = sumaActual;
       return;
     }
 
@@ -71,17 +80,29 @@ function simplificarDeudasOptimo(balances) {
 
       const de = actual.balance < 0 ? actual.persona : otro.persona;
       const para = actual.balance < 0 ? otro.persona : actual.persona;
-      const monto = redondear(Math.abs(actual.balance));
 
-      const copia = cuentas.map(c => ({ ...c }));
-      copia[idx].balance = 0;
-      copia[k].balance = redondear(otro.balance + actual.balance);
+      // Liquida "actual" por completo (puede sobrepagar a "otro" si su deuda era menor)
+      const montoCompleto = redondear(Math.abs(actual.balance));
+      const copiaCompleta = cuentas.map(c => ({ ...c }));
+      copiaCompleta[idx].balance = 0;
+      copiaCompleta[k].balance = redondear(otro.balance + actual.balance);
+      backtrack(copiaCompleta, [...transacciones, { de, para, monto: montoCompleto }], redondear(sumaActual + montoCompleto));
 
-      backtrack(copia, [...transacciones, { de, para, monto }]);
+      // Si "otro" debe menos que "actual", liquidarlo primero por su monto exacto evita
+      // el sobrepago (deja a "actual" con saldo pendiente para las próximas iteraciones)
+      if (Math.abs(otro.balance) < montoCompleto) {
+        const montoParcial = redondear(Math.abs(otro.balance));
+        const signoActual = actual.balance < 0 ? -1 : 1;
+        const signoOtro = otro.balance < 0 ? -1 : 1;
+        const copiaParcial = cuentas.map(c => ({ ...c }));
+        copiaParcial[idx].balance = redondear(actual.balance - signoActual * montoParcial);
+        copiaParcial[k].balance = redondear(otro.balance - signoOtro * montoParcial);
+        backtrack(copiaParcial, [...transacciones, { de, para, monto: montoParcial }], redondear(sumaActual + montoParcial));
+      }
     }
   }
 
-  backtrack(cuentas, []);
+  backtrack(cuentas, [], 0);
   return mejor || [];
 }
 
