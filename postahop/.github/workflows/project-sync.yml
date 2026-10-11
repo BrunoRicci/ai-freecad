@@ -1,0 +1,54 @@
+# Mirrors issue state to the GitHub Project "Status" field.
+# Needs: repo variable PROJECT_NUMBER, secret PROJECT_TOKEN (classic PAT: project, repo).
+name: project-sync
+
+on:
+  issues:
+    types: [opened, reopened, labeled, unlabeled, closed]
+
+concurrency:
+  group: project-sync-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: ${{ vars.PROJECT_NUMBER != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add issue to project and set Status
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          NUMBER: ${{ vars.PROJECT_NUMBER }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          STATE: ${{ github.event.issue.state }}
+          LABELS: ${{ toJSON(github.event.issue.labels.*.name) }}
+        run: |
+          set -euo pipefail
+
+          if [ "$STATE" = "closed" ]; then
+            status="Done"
+          else
+            label=$(jq -r '[.[] | select(startswith("status:"))][0] // ""' <<<"$LABELS")
+            case "$label" in
+              status:ready)       status="Ready" ;;
+              status:in-progress) status="In Progress" ;;
+              status:review)      status="In Review" ;;
+              *)                  status="Backlog" ;;
+            esac
+          fi
+
+          item_id=$(gh project item-add "$NUMBER" --owner "$OWNER" --url "$ISSUE_URL" --format json --jq .id)
+          project_id=$(gh project view "$NUMBER" --owner "$OWNER" --format json --jq .id)
+          fields=$(gh project field-list "$NUMBER" --owner "$OWNER" --format json)
+          field_id=$(jq -r '.fields[] | select(.name=="Status") | .id' <<<"$fields")
+          option_id=$(jq -r --arg s "$status" '.fields[] | select(.name=="Status") | .options[] | select(.name==$s) | .id' <<<"$fields")
+
+          if [ -z "$option_id" ]; then
+            echo "::error::Project Status option '$status' not found. Expected: Backlog, Ready, In Progress, In Review, Done."
+            exit 1
+          fi
+
+          gh project item-edit --id "$item_id" --project-id "$project_id" \
+            --field-id "$field_id" --single-select-option-id "$option_id"
+          echo "Issue -> $status"

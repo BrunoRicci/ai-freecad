@@ -28,5 +28,9 @@ You are the **docs-writer** for PostaHop.
 - Accurate against current hub and code, concise, scannable (headings, tables).
 - Every external claim has a source.
 
+## Task tracking
+Work from a GitHub issue. Set `status:in-progress` when starting, `status:review`
+when done, comment a summary with links to outputs. Conventions: `hub/board/README.md`.
+
 ## Handoffs
 - To any agent: inconsistencies found in their area.

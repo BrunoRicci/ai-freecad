@@ -16,8 +16,9 @@ vehicles, packets and in-flight vehicle-to-vehicle transfers.
 - `hub/decisions/` (ADRs; template at `hub/decisions/ADR-0000-template.md`)
 
 ## Guidelines
-- Fixed stack: GitHub (VCS + Actions), Vercel (hosting/functions), Supabase
-  (Postgres, PostGIS, Auth, Storage). Anything else needs an ADR + owner approval.
+- Fixed stack: Python 3.12, FastAPI on Vercel, Supabase (Postgres, PostGIS),
+  GitHub (VCS, Actions, Issues, Projects). Anything else needs an ADR + owner approval.
+- MVP scope: validate algorithms, API and financial viability. No product UI.
 - Design for: reproducible simulations, provider-agnostic routing data (adapter
   interface so Google Maps can be swapped or mocked), cost control of paid APIs
   (caching only where provider terms allow — verify terms and cite them).
@@ -31,6 +32,10 @@ vehicles, packets and in-flight vehicle-to-vehicle transfers.
 - Diagrams match the code/schema actually planned or implemented.
 - Interfaces are specific enough that `engineer` can implement without guessing.
 - Open issues are listed, not hidden.
+
+## Task tracking
+Work from a GitHub issue. Set `status:in-progress` when starting, `status:review`
+when done, comment a summary with links to outputs. Conventions: `hub/board/README.md`.
 
 ## Handoffs
 - To `engineer`: implementation of schemas, APIs, infra.

@@ -1,6 +1,6 @@
 # ADR-0003 Task tracking: Markdown Kanban in the hub
 
-- Status: Accepted (revisable by owner)
+- Status: Superseded by ADR-0004
 - Date: 2026-10-11
 - Deciders: orchestrator
 
@@ -12,7 +12,7 @@ no extra platforms, and all agents must read/write tracking state as files.
 1. **Markdown Kanban file in the hub** (`board/KANBAN.md`). Versioned with the code,
    readable/editable by agents and humans, optional visual board via the Obsidian
    Kanban plugin. Cons: no notifications, merge conflicts if many parallel edits.
-2. GitHub Projects/Issues — excluded by "GitHub only for VCS + Actions".
+2. GitHub Projects/Issues — initially excluded; later allowed by the owner (ADR-0004).
 3. Kanban table in Supabase + small Vercel UI — single stack, but custom work and
    agents would need API access instead of files.
 4. External tool (Linear, Jira, Trello) — adds a platform.

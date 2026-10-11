@@ -5,14 +5,14 @@ working and updates it after working. If it is not in the hub, it is not known.
 
 ## 1. Before any task
 1. `STATUS.md` — current state.
-2. `board/KANBAN.md` — your card and its dependencies.
+2. Your GitHub issue and its dependencies (conventions: `board/README.md`).
 3. `handoffs/` — open handoffs addressed to you.
-4. Files linked from your card, plus your owned area.
+4. Files linked from your issue, plus your owned area.
 5. `decisions/` — ADRs relevant to the task. Do not contradict an accepted ADR;
    propose a superseding one instead.
 
 ## 2. After any task (definition of done for hub hygiene)
-- [ ] Card moved/updated in `board/KANBAN.md` (status, links to outputs).
+- [ ] GitHub issue updated: status label, comment with summary + links to outputs; closed when done.
 - [ ] One entry appended to `JOURNAL.md`.
 - [ ] Owned docs updated with results.
 - [ ] Handoff created if another agent must act; handoffs addressed to you closed.
@@ -23,11 +23,13 @@ working and updates it after working. If it is not in the hub, it is not known.
 | Path | Owner | Others may |
 |---|---|---|
 | `PROJECT.md`, `STATUS.md` | orchestrator | read |
-| `board/KANBAN.md` | orchestrator (columns) | update their own cards |
+| GitHub issues / Project | orchestrator (creates, prioritizes) | update their own issues |
+| `board/` | orchestrator | read |
 | `JOURNAL.md` | all | append only |
 | `decisions/` | architect | draft ADRs as `Proposed` |
 | `architecture/` | architect | read |
 | `algorithms/` | algorithms | read |
+| `finance/` | algorithms | read |
 | `engineering/` | engineer | read |
 | `docs/` | docs-writer | read |
 | `research/` | all | add notes (own files) |
@@ -35,7 +37,7 @@ working and updates it after working. If it is not in the hub, it is not known.
 | `handoffs/` | all | create; only the addressee closes |
 
 ## 4. IDs and conventions
-- Tasks: `PH-###` · ADRs: `ADR-####` · Questions: `Q-###` · Handoffs: `H-YYYYMMDD-##`
+- Tasks: GitHub issue `#N` (legacy seed IDs `PH-###` kept in issue titles) · ADRs: `ADR-####` · Questions: `Q-###` · Handoffs: `H-YYYYMMDD-##`
 - Dates: ISO 8601 (`2026-10-11`). Units: SI, times in seconds unless stated, timestamps UTC.
 - File names: kebab-case. Formats: Markdown, YAML, CSV, JSON, Mermaid for diagrams.
 
